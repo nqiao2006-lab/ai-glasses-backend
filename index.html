@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>老人辅助眼镜 · 中文测试台</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f6f5;color:#203c36;font:16px/1.7 "Microsoft YaHei",sans-serif}header{background:#173d36;color:white;padding:28px max(24px,calc((100% - 820px)/2))}h1{font-size:26px;margin:0}header p{margin:5px 0;color:#cfdfd6}main{max-width:860px;margin:24px auto;padding:0 20px}section{background:white;border:1px solid #d7e1dc;border-radius:10px;padding:24px;margin-bottom:18px}h2{font-size:20px;margin:0 0 12px}label{display:block;margin:14px 0 5px}input{width:100%;font:inherit;border:1px solid #acbeb4;border-radius:6px;padding:10px;background:white}button{font:inherit;border:0;border-radius:6px;background:#17664f;color:white;padding:10px 20px;margin-top:16px;cursor:pointer}button:disabled{opacity:.5;cursor:wait}small{display:block;color:#5c7065}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f5f2;padding:16px;border-radius:6px;color:#203c36}.status{font-size:15px}a{color:#17664f}
+</style>
+</head>
+<body>
+<header><h1>AI 老人辅助眼镜</h1><p>独立视觉感知 · 中文测试台</p></header>
+<main>
+<p id="health" class="status" role="status">正在检查服务状态……</p>
+<section><h2>硬件摄像头 · 实时画面</h2>
+<p id="camera-status" role="status">等待硬件传入图片……</p>
+<div style="display:flex;gap:10px;flex-wrap:wrap"><figure id="original-figure" style="display:none;margin:0;flex:1;min-width:240px"><figcaption>原图</figcaption><canvas id="camera-original" style="width:100%;background:#132820"></canvas></figure><figure style="margin:0;flex:1;min-width:240px"><figcaption>增强图</figcaption><canvas id="camera-image" style="width:100%;background:#132820"></canvas></figure></div>
+<small id="camera-meta">尚未收到画面。后台仅保留最新帧。</small>
+<label><input id="compare-original" type="checkbox" style="width:auto"> 同帧原图并排对比（额外传输和解码一张图）</label>
+<label for="enhancement-mode">增强模式</label><select id="enhancement-mode"><option value="C" selected>C：亮度稳定 + CLAHE</option><option value="D">D：亮度稳定 + CLAHE + 轻锐化</option><option value="B">B：仅亮度稳定</option><option value="A">A：全部关闭</option><option value="custom" disabled hidden>自定义配置</option></select>
+<small id="display-fps">浏览器绘制 FPS：等待画面（不是屏幕硬件刷新率）</small>
+<pre id="performance">等待性能统计</pre>
+<small>显示后端最近收到的图片（也包括手动测试上传）；只在内存保留最新一帧。/upload 的磁盘图片会自动过期清理，实时画面不受影响。</small>
+</section>
+<section><h2>视觉分析（不需要用户指令）</h2>
+<form id="vision/analyze"><label for="vision-image">选择当前画面</label><input id="vision-image" name="image" type="file" accept="image/jpeg,image/png" required><button>分析画面</button></form>
+<small>不永久保存图片；真实模式会将原图发送至配置的云端模型。模拟模式不识别画面。结果仅为观察与建议，不执行操作。</small></section>
+<section><h2>旧版图片与意图分析（兼容保留）</h2>
+<form id="analyze">
+<label for="image">选择图片</label><input id="image" name="image" type="file" accept="image/jpeg,image/png" required><small>支持 JPEG、PNG，单张不超过 10 MB。</small>
+<label for="intent">您想做什么？</label><input id="intent" name="intent" value="帮我打开微信" maxlength="1000" required>
+<button>开始分析</button></form>
+<small>模拟模式不会识别图片；分析结果仅供测试，不会执行手机操作。</small></section>
+<section><h2>上传并临时保存图片</h2><small>图片默认保存约 30 秒后自动清理（保留时间可配置）；只需分析时使用上面的表单即可，无需重复上传。</small>
+<form id="upload"><label for="file">选择要保存的图片</label><input id="file" name="file" type="file" accept="image/jpeg,image/png" required><button>保存图片</button></form></section>
+<section><h2>测试结果</h2><p id="mode" role="status">等待测试</p><pre id="result" aria-live="polite">请选择图片并发送请求。</pre></section>
+<p><a href="/docs">查看接口文档（Swagger 原生界面）</a></p>
+</main>
+<script>
+const result=document.getElementById('result'),mode=document.getElementById('mode');
+const cameraImage=document.getElementById('camera-image'),cameraStatus=document.getElementById('camera-status'),cameraMeta=document.getElementById('camera-meta');
+let frameTag='',lastReceived=0,viewRevision=0,configRevision=0,currentConfig=null,modeUpdatePending=false;
+const originalCanvas=document.getElementById('camera-original'),drawTimes=[];
+const compareOriginal=document.getElementById('compare-original'),modeSelect=document.getElementById('enhancement-mode');
+function syncMode(config){
+ currentConfig=config;
+ const b=config.enable_brightness_stabilization,c=config.enable_clahe,s=config.enable_sharpen;
+ modeSelect.value=!b&&!c&&!s?'A':b&&!c&&!s?'B':b&&c&&!s?'C':b&&c&&s?'D':'custom';
+}
+compareOriginal.addEventListener('change',()=>{
+ document.getElementById('original-figure').style.display=compareOriginal.checked?'':'none';
+ viewRevision++;frameTag='';drawTimes.length=0;
+});
+modeSelect.addEventListener('change',async event=>{
+ const m=event.target.value;
+ modeUpdatePending=true;modeSelect.disabled=true;configRevision++;viewRevision++;
+ try{
+  const config={...(currentConfig||{}),enable_brightness_stabilization:m!=='A',enable_clahe:m==='C'||m==='D',enable_sharpen:m==='D'};
+  const response=await fetch('/camera/enhancement',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)});
+  if(!response.ok)throw Error('设置失败');
+  syncMode(await response.json());viewRevision++;frameTag='';
+ }catch(error){if(currentConfig)syncMode(currentConfig);cameraStatus.textContent=error.message;}
+ finally{modeUpdatePending=false;modeSelect.disabled=false;configRevision++;}
+});
+async function releaseResponse(response){
+ if(response.body&&!response.bodyUsed){try{await response.body.cancel();}catch(error){}}
+}
+async function refreshCamera(){
+ const responses=[],images=[],revision=viewRevision,compare=compareOriginal.checked;
+ try{
+  const response=await fetch('/camera/preview/enhanced',{cache:'no-store',headers:frameTag?{'If-None-Match':frameTag}:{}});
+  responses.push(response);
+  if(response.status===204){cameraStatus.textContent='等待硬件传入图片……';}
+  else if(response.status===304){cameraStatus.textContent=Date.now()-lastReceived>5000?'暂未收到新图片，当前显示最后一帧。':'正在接收画面';}
+  else if(response.ok){
+   if(revision!==viewRevision)return;
+   if(compare){
+    const original=await fetch('/camera/preview/original?sequence='+response.headers.get('X-Frame-Sequence'),{cache:'no-store'});
+    responses.push(original);
+    if(original.status===409||original.status===204)return;
+    if(!original.ok)throw Error('原图读取失败');
+   }
+   // Wait for both decodes to settle so a failed companion cannot leak a bitmap.
+   const decoded=await Promise.allSettled(responses.map(item=>item.blob().then(blob=>createImageBitmap(blob))));
+   decoded.forEach(item=>{if(item.status==='fulfilled')images.push(item.value);});
+   const failure=decoded.find(item=>item.status==='rejected');
+   if(failure)throw failure.reason;
+   if(revision!==viewRevision)return;
+   const drawn=await new Promise((resolve,reject)=>requestAnimationFrame(()=>{
+    try{
+     if(revision!==viewRevision){resolve(false);return;}
+     const canvases=compare?[cameraImage,originalCanvas]:[cameraImage];
+     canvases.forEach((canvas,i)=>{
+      if(canvas.width!==images[i].width)canvas.width=images[i].width;
+      if(canvas.height!==images[i].height)canvas.height=images[i].height;
+      canvas.getContext('2d').drawImage(images[i],0,0);
+     });
+     resolve(true);
+    }catch(error){reject(error);}
+   }));
+   if(!drawn)return;
+   const now=performance.now();drawTimes.push(now);while(drawTimes.length&&now-drawTimes[0]>5000)drawTimes.shift();
+   frameTag=response.headers.get('ETag');lastReceived=Date.parse(response.headers.get('X-Frame-Received-At'));
+   cameraStatus.textContent='已收到画面';
+   cameraMeta.textContent='第 '+response.headers.get('X-Frame-Sequence')+' 帧 · '+new Date(lastReceived).toLocaleString('zh-CN')+' · 来源 '+response.headers.get('X-Frame-Source');
+  }else{throw new Error('HTTP '+response.status);}
+ }catch(error){cameraStatus.textContent='画面连接中断，正在重连；已有画面为最后一帧。';}
+ finally{images.forEach(img=>img.close());await Promise.allSettled(responses.map(releaseResponse));setTimeout(refreshCamera,15);}
+}
+refreshCamera();
+async function updatePerformance(){const revision=configRevision;try{const response=await fetch('/camera/performance',{cache:'no-store'});if(response.ok){const stats=await response.json();if(!modeUpdatePending&&revision===configRevision)syncMode(stats.config);document.getElementById('performance').textContent='JPEG 接收 FPS：'+stats.jpeg_receive_fps.toFixed(2)+' · 图像处理 FPS：'+stats.processed_fps_last_5s.toFixed(2)+'\n解码 '+stats.mean_decode_ms.toFixed(2)+' ms · 增强 '+stats.mean_enhance_ms.toFixed(2)+' ms · 编码 '+stats.mean_encode_ms.toFixed(2)+' ms\n跳过旧帧：'+stats.dropped_before_processing+' · 回退：'+stats.failures+' · 处理中：'+stats.processing_in_flight+' · 有更新帧等待：'+stats.waiting_latest_only+'\n接收完成至图像就绪：'+stats.mean_receive_to_ready_ms.toFixed(2)+' ms（不含拍摄、Wi-Fi 上传和浏览器显示）';}
+ const now=performance.now();while(drawTimes.length&&now-drawTimes[0]>5000)drawTimes.shift();document.getElementById('display-fps').textContent='本浏览器'+(compareOriginal.checked?'同帧原图/增强图':'增强图')+'绘制 FPS（5秒窗口）：'+(drawTimes.length/5).toFixed(2);
+ }catch(error){}finally{setTimeout(updatePerformance,2000);}}
+updatePerformance();
+for(const name of ['vision/analyze','analyze','upload']){
+ document.getElementById(name).addEventListener('submit',async event=>{
+  event.preventDefault();const form=event.currentTarget,button=form.querySelector('button'),file=form.querySelector('[type=file]').files[0];
+  if(!file||file.size===0||file.size>10*1024*1024){mode.textContent='请选择非空且不超过 10 MB 的图片。';return;}
+  button.disabled=true;mode.textContent='正在处理……';result.textContent='请稍候';
+  try{
+   const response=await fetch('/'+name,{method:'POST',body:new FormData(form)});
+   const body=await response.json(),aiMode=response.headers.get('X-AI-Mode');
+   mode.textContent=(response.ok?'请求成功':'请求失败')+'（状态码 '+response.status+'）'+(aiMode==='mock'?' · 模拟模式：未调用真实模型':aiMode?' · 云端模型模式':'');
+   result.textContent=JSON.stringify(body,null,2);
+  }catch(error){mode.textContent='请求失败，请确认服务正在运行。';result.textContent=error.message;}
+  finally{button.disabled=false;}
+ });
+}
+fetch('/health').then(async response=>{const body=await response.json();document.getElementById('health').textContent=response.ok&&body.status==='ok'?'● 服务运行正常':'服务状态异常';}).catch(()=>{document.getElementById('health').textContent='无法连接服务';});
+</script>
+</body></html>

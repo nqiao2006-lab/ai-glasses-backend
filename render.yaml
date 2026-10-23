@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: ai-glasses-backend
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: AI_MODE
+        value: mock
+      - key: VISION_MODE
+        value: mock
+      - key: CORS_ALLOW_ORIGINS
+        value: ""
