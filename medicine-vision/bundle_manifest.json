@@ -190,8 +190,8 @@
     },
     {
       "path": "verify_bundle.py",
-      "bytes": 1565,
-      "sha256": "2bc2458fe70f938da5bee79bcc3baf2a727afc65fecad48a98dbc60557c3300c"
+      "bytes": 2168,
+      "sha256": "5dd69428cf1f6e704c546f8c77369f5634369999297d7bc744c84a7173df4378"
     },
     {
       "path": "vision_service/__init__.py",
