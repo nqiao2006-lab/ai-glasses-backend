@@ -1,0 +1,137 @@
+[
+  {
+    "name": "model_bundle.part001",
+    "bytes": 5242880,
+    "sha256": "b64d91822e3d4b0d1185f6899e62e422126732678c8ca7ca600e31ccdae9ccdb"
+  },
+  {
+    "name": "model_bundle.part002",
+    "bytes": 5242880,
+    "sha256": "b90c09e64ea8e223e3fd6a8bda219a62cb3d3253e45c34a6ebecfc4000179e67"
+  },
+  {
+    "name": "model_bundle.part003",
+    "bytes": 5242880,
+    "sha256": "1662f4d5af09e79b155fd6afeb49e5d411e2c3045fba2a68fa8c603fbbbed75d"
+  },
+  {
+    "name": "model_bundle.part004",
+    "bytes": 5242880,
+    "sha256": "96c405b5d465154898bffb065391f25ddab3a31f336dcd011d6f5accfaaac940"
+  },
+  {
+    "name": "model_bundle.part005",
+    "bytes": 5242880,
+    "sha256": "0f6ba327bb9410bcc28b6580580326fdfda6faff902fcf925f480a6e07c16a0f"
+  },
+  {
+    "name": "model_bundle.part006",
+    "bytes": 5242880,
+    "sha256": "db794acefd3f12cc3e78725225862055c8ea9bcdc2626a2f1a6552e396632262"
+  },
+  {
+    "name": "model_bundle.part007",
+    "bytes": 5242880,
+    "sha256": "ab1acb61f6df2c7bd729c863f97bd13d333d7bf3efe71915cc4a7a046f1d59c9"
+  },
+  {
+    "name": "model_bundle.part008",
+    "bytes": 5242880,
+    "sha256": "7a4af236a4cfe44091465e3f67d6f14322cecfb65fc7d473bf0c733d62457859"
+  },
+  {
+    "name": "model_bundle.part009",
+    "bytes": 5242880,
+    "sha256": "a1e0ceb581e3d50ff3f653bc5e1c6595bf7d32c6fe3d026b53e03af89c9db431"
+  },
+  {
+    "name": "model_bundle.part010",
+    "bytes": 5242880,
+    "sha256": "b6f34dc6cd166472f79d00d2833b81d8a7cc1d747e2b774aabd67be6bb383232"
+  },
+  {
+    "name": "model_bundle.part011",
+    "bytes": 5242880,
+    "sha256": "ecc925bcfb27371e010ae6354087e2086c5d7fe8b0b4eb60b473591bcc6c1db0"
+  },
+  {
+    "name": "model_bundle.part012",
+    "bytes": 5242880,
+    "sha256": "325958327a1e7b1b2570a49bade0044deade3e5ab360f2f600fdd3d93445ee95"
+  },
+  {
+    "name": "model_bundle.part013",
+    "bytes": 5242880,
+    "sha256": "cf002cf730481d26e62d87ea0d41b042885c8789036fe88ff6ed04e13cd0445b"
+  },
+  {
+    "name": "model_bundle.part014",
+    "bytes": 5242880,
+    "sha256": "27368be350546c99ce5e291eb13b5bee37f2a3b6922054402782a9906ea0d219"
+  },
+  {
+    "name": "model_bundle.part015",
+    "bytes": 5242880,
+    "sha256": "b83cfa5845c481599af309af6077ebebb7e730a5006cc4e91b51fea99e152570"
+  },
+  {
+    "name": "model_bundle.part016",
+    "bytes": 5242880,
+    "sha256": "48e8d0abc819a20286e595d2f4bfcc0938b41bca26a82dcbb66700e397c3bc43"
+  },
+  {
+    "name": "model_bundle.part017",
+    "bytes": 5242880,
+    "sha256": "c5fec6d00e64b0d42f9430835fc56cdfcd367e9f7a0e22d1498593c2cfa8f441"
+  },
+  {
+    "name": "model_bundle.part018",
+    "bytes": 5242880,
+    "sha256": "4cbdf6df87c7ae4ea5c3ae0957310a279dc36c231bf84e6c351ee104a309f5e8"
+  },
+  {
+    "name": "model_bundle.part019",
+    "bytes": 5242880,
+    "sha256": "fb9a19af6e9bb6207b7dcaafcd064d7ff07371a6634319dc485b739d526ee482"
+  },
+  {
+    "name": "model_bundle.part020",
+    "bytes": 5242880,
+    "sha256": "22ac38a6000dbabea8a577d6f80c4967978ed28be4f6bcfde843dedbc952639a"
+  },
+  {
+    "name": "model_bundle.part021",
+    "bytes": 5242880,
+    "sha256": "ca1b8cdd1f01a597c6a922b6468e48e3c0791492d0299492da6ea5e39d3cf8a7"
+  },
+  {
+    "name": "model_bundle.part022",
+    "bytes": 5242880,
+    "sha256": "f5359bf7e0da3a0c402bdb4a8ae8fd3b208b42692f351e1b25eb11eb80d47510"
+  },
+  {
+    "name": "model_bundle.part023",
+    "bytes": 5242880,
+    "sha256": "f8e49dccf1a38ee26c0d54971252a17a494021567eae03c9f1e59f6310fd6e6c"
+  },
+  {
+    "name": "model_bundle.part024",
+    "bytes": 5242880,
+    "sha256": "eecdb0db3c453d34eb393956029714a248db6fa5809bdcf302e12977a3fc9b7f"
+  },
+  {
+    "name": "model_bundle.part025",
+    "bytes": 5242880,
+    "sha256": "5e0dcb8710713282cd6c6860ead930ce6c4a3fd8b3760ad101ab5903003974ca"
+  },
+  {
+    "name": "model_bundle.part026",
+    "bytes": 5242880,
+    "sha256": "17a11c1184a929243e259306cbd21bc1fe36ce12638bfff00025280338a4b591"
+  },
+  {
+    "name": "model_bundle.part027",
+    "bytes": 2797387,
+    "sha256": "b6361b7a9c4a6a69126a316732824cdee0fe5c51ed7e67fb27fca12a743e43b0"
+  }
+]
