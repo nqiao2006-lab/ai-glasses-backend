@@ -1,0 +1,68 @@
+{
+  "bundle_verification": {
+    "passed": true,
+    "verified_files": 45,
+    "model_configuration": "package-local relative path"
+  },
+  "real_http": true,
+  "real_ocr": true,
+  "sample_kind": "synthetic",
+  "cases": [
+    {
+      "sample": "date_mfg_exp.jpg",
+      "passed": true,
+      "answer": "生产日期识别候选：2026/08/12。请对照原图确认。",
+      "inference_seconds": 6.643023799988441
+    },
+    {
+      "sample": "date_other.jpg",
+      "passed": true,
+      "answer": "生产日期识别候选：2025-12-03。请对照原图确认。",
+      "inference_seconds": 6.379111499991268
+    }
+  ],
+  "passed": true,
+  "initial_health": {
+    "status": "ok",
+    "ready": true,
+    "database": "ok",
+    "model": {
+      "state": "ready",
+      "initializations": 1,
+      "completed_tasks": 0,
+      "kind": "ready",
+      "pid": 292324,
+      "load_seconds": 3.436663100030273,
+      "rss_bytes": 457723904
+    },
+    "capabilities": {
+      "ocr": true,
+      "explicit_field_extraction": true,
+      "object_recognition": false,
+      "generative_vqa": false
+    },
+    "database_purpose": "local integration/testing SQLite, not the production team database"
+  },
+  "final_health": {
+    "status": "ok",
+    "ready": true,
+    "database": "ok",
+    "model": {
+      "state": "ready",
+      "initializations": 1,
+      "completed_tasks": 2,
+      "kind": "ready",
+      "pid": 292324,
+      "load_seconds": 3.436663100030273,
+      "rss_bytes": 457723904
+    },
+    "capabilities": {
+      "ocr": true,
+      "explicit_field_extraction": true,
+      "object_recognition": false,
+      "generative_vqa": false
+    },
+    "database_purpose": "local integration/testing SQLite, not the production team database"
+  },
+  "seconds": 19.0
+}
