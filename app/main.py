@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.ai_service import AnalysisError, AgentResponse, analyze_image
+from app.agent_routes import router as agent_router
 from app.vision_service import VisionError, VisionFailure, VisionResponse, analyze_vision
 from app.camera_preview import preview
 from app.upload_cleanup import cleanup_expired
@@ -60,6 +61,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="AI 老人辅助眼镜后端", version="0.2.0", lifespan=lifespan)
+app.include_router(agent_router)
 
 # Empty by default: the bundled page uses same-origin relative URLs.
 # Cross-origin browser clients must be explicitly listed, without URL paths.
