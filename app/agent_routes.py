@@ -1,6 +1,5 @@
 """Authenticated cloud vision routes, independent of existing photo/OCR routes."""
 import asyncio
-import json
 import math
 import os
 import secrets
@@ -110,12 +109,8 @@ async def chat(payload):
 
 
 @router.post('/v1/chat/completions', summary='MobileAgentB 屏幕理解代理')
-async def mobileagentb_proxy(request: Request):
-    try:
-        payload = json.loads(await request.body())
-    except (ValueError, UnicodeDecodeError):
-        raise AgentError('invalid_request', '请求必须是 JSON。', 422) from None
-    if not isinstance(payload, dict) or not isinstance(payload.get('messages'), list):
+async def mobileagentb_proxy(payload: dict):
+    if not isinstance(payload.get('messages'), list):
         raise AgentError('invalid_request', '请求必须包含 messages 数组。', 422)
     if payload.get('stream', False) is not False:
         raise AgentError('invalid_request', '此接口仅支持非流式请求，请设置 stream=false。', 422)
