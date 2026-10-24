@@ -28,6 +28,13 @@ class CameraPreview:
         self.ws_sequence: int | None = None
         self.ws_received_total = 0
         self.ws_dropped_out_of_order = 0
+        self.ws_session_counter = 0
+        self.ws_active_session = 0
+        self.ws_dropped_superseded = 0
+
+    def open_ws_session(self) -> int:
+        self.ws_session_counter += 1
+        return self.ws_session_counter
 
     def publish(self, data: bytes, content_type: str, source: str,
                 client_sequence: int | None = None) -> Frame:
@@ -40,11 +47,20 @@ class CameraPreview:
             self.jpeg_arrivals.append(frame.received_monotonic)
         return frame
 
-    def publish_ws(self, data: bytes, sequence: int) -> bool:
+    def publish_ws(self, data: bytes, sequence: int, session: int) -> bool:
         # This method contains no awaits: comparison and replacement are atomic
         # on the single ASGI event loop, including across multiple connections.
         self.ws_arrivals.append(time.monotonic())
         self.ws_received_total += 1
+        # A reboot/reconnect may restart the hardware counter. Only a newer
+        # connection's first valid frame may reset it; old sockets cannot
+        # regain ownership, even after the newer socket disconnects.
+        if session < self.ws_active_session:
+            self.ws_dropped_superseded += 1
+            return False
+        if session > self.ws_active_session:
+            self.ws_active_session = session
+            self.ws_sequence = None
         if self.ws_sequence is not None and sequence <= self.ws_sequence:
             self.ws_dropped_out_of_order += 1
             return False

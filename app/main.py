@@ -119,9 +119,10 @@ async def camera_upload_stream(websocket: WebSocket):
     """One binary WS message = little-endian uint32 magic, uint32 seq, JPEG.
 
     No per-frame acknowledgements, disk writes or AI calls. Sequence numbers
-    remain monotonic across reconnects for the lifetime of this server process.
+    must increase within a connection; reconnecting may restart at zero.
     """
     await websocket.accept()
+    session = preview.open_ws_session()
     preview.ws_connections += 1
     try:
         while True:
@@ -145,7 +146,7 @@ async def camera_upload_stream(websocket: WebSocket):
             if packet[8:11] != b"\xff\xd8\xff" or not packet.endswith(b"\xff\xd9"):
                 await websocket.close(code=1008, reason="Complete JPEG required")
                 break
-            preview.publish_ws(packet[8:], sequence)
+            preview.publish_ws(packet[8:], sequence, session)
             # Buffered WS messages must not starve HTTP readers or the worker.
             await asyncio.sleep(0)
     except WebSocketDisconnect:

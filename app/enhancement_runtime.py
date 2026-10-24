@@ -113,6 +113,8 @@ class EnhancementRuntime:
                 "ws_frame_fps": preview.ws_frame_fps(),
                 "ws_received_total": preview.ws_received_total,
                 "ws_dropped_out_of_order": preview.ws_dropped_out_of_order,
+                "ws_dropped_superseded": preview.ws_dropped_superseded,
+                "ws_active_session": preview.ws_active_session,
                 "note": "Last 120 processed frames; rates use a 5s window. Browser display FPS measured on page."}
 
 
