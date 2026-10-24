@@ -19,6 +19,7 @@ class EnhancementRuntime:
         self.pair = None
         self.processed = 0
         self.dropped = 0
+        self.dropped_after_processing = 0
         self.failures = 0
         self.samples = deque(maxlen=120)
         self.finished = deque(maxlen=120)
@@ -53,6 +54,9 @@ class EnhancementRuntime:
                 # its output and timing sample before publishing the new mode.
                 if generation != self.generation:
                     continue
+                if preview.latest is not frame:
+                    self.dropped_after_processing += 1
+                    continue
                 cfg = enhancer.config
                 enabled = any((cfg.enable_brightness_stabilization, cfg.enable_clahe, cfg.enable_sharpen))
                 output = replace(frame, data=result.data, content_type="image/jpeg" if enabled else frame.content_type)
@@ -61,6 +65,9 @@ class EnhancementRuntime:
                                      (time.monotonic()-frame.received_monotonic)*1000))
             except Exception:
                 if generation != self.generation:
+                    continue
+                if preview.latest is not frame:
+                    self.dropped_after_processing += 1
                     continue
                 self.failures += 1
                 output = frame
@@ -88,6 +95,7 @@ class EnhancementRuntime:
                 "jpeg_receive_fps": preview.jpeg_receive_fps(),
                 "processed_fps_last_5s": len(recent)/5, "processed_total": self.processed,
                 "dropped_before_processing": self.dropped, "failures": self.failures,
+                "dropped_after_processing": self.dropped_after_processing,
                 "pending_latest_only": bool(preview.latest and (not self.pair or preview.latest.sequence != self.pair[0].sequence)),
                 "mean_decode_ms": averages[0], "mean_enhance_ms": averages[1],
                 "mean_encode_ms": averages[2], "mean_worker_ms": averages[3],
@@ -98,7 +106,13 @@ class EnhancementRuntime:
                     and preview.latest.sequence != self.in_flight_sequence
                     and (not self.pair or preview.latest.sequence != self.pair[0].sequence)),
                 "queue_capacity": 1,
-                "latest_received_sequence": preview.sequence,
+                "latest_received_sequence": preview.ws_sequence if preview.ws_sequence is not None else preview.sequence,
+                "latest_internal_sequence": preview.sequence,
+                "ws_connected": preview.ws_connections > 0,
+                "ws_connections": preview.ws_connections,
+                "ws_frame_fps": preview.ws_frame_fps(),
+                "ws_received_total": preview.ws_received_total,
+                "ws_dropped_out_of_order": preview.ws_dropped_out_of_order,
                 "note": "Last 120 processed frames; rates use a 5s window. Browser display FPS measured on page."}
 
 

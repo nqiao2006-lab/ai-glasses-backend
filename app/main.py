@@ -4,11 +4,13 @@ import logging
 import asyncio
 import math
 import os
+import struct
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi import (FastAPI, File, Form, HTTPException, Request, Response,
+                     UploadFile, WebSocket, WebSocketDisconnect)
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -74,7 +76,7 @@ if cors_origins:
         allow_origins=cors_origins,
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT"],
-        allow_headers=["Content-Type", "If-None-Match"],
+        allow_headers=["Content-Type", "If-None-Match", "Authorization"],
         expose_headers=["X-AI-Mode", "ETag", "X-Frame-Sequence", "X-Frame-Received-At",
                         "X-Frame-Source", "X-Enhancement", "X-Enhancement-Ms"],
     )
@@ -110,6 +112,46 @@ async def health() -> dict[str, str]:
 @app.get("/camera/performance", summary="接收和增强性能统计")
 async def camera_performance():
     return runtime.stats()
+
+
+@app.websocket("/ws/camera/upload")
+async def camera_upload_stream(websocket: WebSocket):
+    """One binary WS message = little-endian uint32 magic, uint32 seq, JPEG.
+
+    No per-frame acknowledgements, disk writes or AI calls. Sequence numbers
+    remain monotonic across reconnects for the lifetime of this server process.
+    """
+    await websocket.accept()
+    preview.ws_connections += 1
+    try:
+        while True:
+            message = await websocket.receive()
+            if message["type"] == "websocket.disconnect":
+                break
+            packet = message.get("bytes")
+            if packet is None:
+                await websocket.close(code=1003, reason="Binary frames required")
+                break
+            if len(packet) > MAX_IMAGE_BYTES + 8:
+                await websocket.close(code=1009, reason="JPEG must not exceed 10 MB")
+                break
+            if len(packet) < 12:
+                await websocket.close(code=1008, reason="Missing frame header or JPEG")
+                break
+            magic, sequence = struct.unpack_from("<II", packet)
+            if magic != 0x4B564630:
+                await websocket.close(code=1008, reason="Invalid frame magic")
+                break
+            if packet[8:11] != b"\xff\xd8\xff" or not packet.endswith(b"\xff\xd9"):
+                await websocket.close(code=1008, reason="Complete JPEG required")
+                break
+            preview.publish_ws(packet[8:], sequence)
+            # Buffered WS messages must not starve HTTP readers or the worker.
+            await asyncio.sleep(0)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        preview.ws_connections -= 1
 
 
 @app.put("/camera/enhancement", summary="调整增强参数（仅当前进程生效）")
