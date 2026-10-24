@@ -21,6 +21,20 @@
 <pre id="performance">等待性能统计</pre>
 <small>显示后端最近收到的图片（也包括手动测试上传）；只在内存保留最新一帧。/upload 的磁盘图片会自动过期清理，实时画面不受影响。</small>
 </section>
+<section aria-labelledby="assistant-title"><h2 id="assistant-title">多功能视觉助手 · 当前摄像头画面</h2>
+<small>保留下面所有旧功能。此入口只在点击时取一张当前原图，不改变实时视频、不自动连续调用模型。</small>
+<form id="assistant-form" autocomplete="off">
+<label for="assistant-token">本网站 Agent 访问令牌</label><input id="assistant-token" type="password" autocomplete="off" required placeholder="本网站的 VISION_API_TOKEN（不是云模型 API Key）">
+<label for="assistant-mode">您想做什么？</label><select id="assistant-mode"><option value="read_text">读文字（通用 OCR，不局限药品）</option><option value="objects">识别物品</option><option value="scene">描述周围场景</option></select>
+<label for="assistant-ocr-token">OCR 服务访问令牌（读文字时需要）</label><input id="assistant-ocr-token" type="password" autocomplete="off" placeholder="OCR 服务令牌；后端已配置时可留空">
+<small>点击即将当前照片交给所选服务：读文字使用独立 OCR 服务；认物/场景使用后端配置的云视觉模型，可能产生费用。OCR 服务可能保留照片和结果。令牌只保留在当前页面，不写入浏览器存储。识别结果须对照实物，不能用于保证通行安全或决定服药。</small>
+<button id="assistant-start" type="submit">识别当前画面</button>
+<button id="assistant-stop" type="button" disabled>停止等待</button>
+<button id="assistant-clear" type="button">清空令牌</button>
+</form>
+<p id="assistant-status" role="status">等待手动识别；物体识别需要配置云视觉模型。</p>
+<pre id="assistant-result" aria-live="polite">识别结果将在这里显示。药品 fields 仍原样保留，通用读文字看 answer 和 evidence_text。</pre>
+</section>
 <section><h2>视觉分析（不需要用户指令）</h2>
 <form id="vision/analyze"><label for="vision-image">选择当前画面</label><input id="vision-image" name="image" type="file" accept="image/jpeg,image/png" required><button>分析画面</button></form>
 <small>不永久保存图片；真实模式会将原图发送至配置的云端模型。模拟模式不识别画面。结果仅为观察与建议，不执行操作。</small></section>
@@ -36,6 +50,45 @@
 <p><a href="/docs">查看接口文档（Swagger 原生界面）</a></p>
 </main>
 <script>
+const assistantForm=document.getElementById('assistant-form'),assistantStatus=document.getElementById('assistant-status'),assistantResult=document.getElementById('assistant-result');
+const assistantStart=document.getElementById('assistant-start'),assistantStop=document.getElementById('assistant-stop');
+let assistantController=null;
+document.getElementById('assistant-clear').addEventListener('click',()=>{document.getElementById('assistant-token').value='';document.getElementById('assistant-ocr-token').value='';});
+assistantStop.addEventListener('click',()=>{if(assistantController)assistantController.abort();});
+async function assistantJSON(url,options){
+ const response=await fetch(url,options);let body;
+ try{body=await response.json();}catch(error){throw Error('服务返回非 JSON 响应（HTTP '+response.status+'）');}
+ if(!response.ok)throw Error(body.error?.message||('请求失败（HTTP '+response.status+'）'));
+ return body;
+}
+assistantForm.addEventListener('submit',async event=>{
+ event.preventDefault();if(assistantController)return;
+ const token=document.getElementById('assistant-token').value.trim(),ocrToken=document.getElementById('assistant-ocr-token').value.trim();
+ if(!token||!/[\x21-\x7e]+/.test(token)||/[^\x21-\x7e]/.test(token+ocrToken)){assistantStatus.textContent='请填写令牌原值，不带标签、空格或中文字符。';return;}
+ const selectedMode=document.getElementById('assistant-mode').value;
+ const controller=new AbortController();assistantController=controller;assistantStart.disabled=true;assistantStop.disabled=false;
+ const headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'};if(ocrToken)headers['X-OCR-Token']=ocrToken;
+ let stoppedByDeadline=false;const deadline=setTimeout(()=>{stoppedByDeadline=true;controller.abort();},180000);
+ assistantStatus.textContent='正在检查服务并识别当前画面……';assistantResult.textContent='请稍候。';
+ try{
+  const capabilities=await assistantJSON('/api/v1/assistant/capabilities',{headers,signal:controller.signal,cache:'no-store'});
+  if(selectedMode!=='read_text'&&!capabilities.vision_configured)throw Error('物体/场景识别尚未配置 VISION_QWEN_API_KEY；原有 OCR 和视频不受影响。');
+  if(selectedMode==='read_text'&&!ocrToken&&!capabilities.ocr_token_configured)throw Error('请填写 OCR 服务访问令牌；它可能与本网站令牌不同。');
+  const body=await assistantJSON('/api/v1/assistant/analyze',{method:'POST',headers,signal:controller.signal,body:JSON.stringify({mode:selectedMode})});
+  assistantResult.textContent=JSON.stringify(body,null,2);
+  if(selectedMode==='read_text'){
+   const taskID=body.task_id;let task=body.ocr;
+   while(!['succeeded','failed','timed_out'].includes(task.status)){
+    assistantStatus.textContent='OCR '+task.status+' · 任务 '+taskID;
+    await new Promise((resolve,reject)=>{const onAbort=()=>{clearTimeout(timer);reject(new DOMException('Aborted','AbortError'));};const timer=setTimeout(()=>{controller.signal.removeEventListener('abort',onAbort);resolve();},2000);controller.signal.addEventListener('abort',onAbort,{once:true});if(controller.signal.aborted)onAbort();});
+    task=await assistantJSON('/api/v1/assistant/ocr/'+encodeURIComponent(taskID),{headers,signal:controller.signal,cache:'no-store'});
+    assistantResult.textContent=JSON.stringify({...body,ocr:task},null,2);
+   }
+   assistantStatus.textContent=task.status==='succeeded'?'OCR 已完成；请核对文字和图像质量提示。':'OCR 未成功：'+(task.message||task.error_code||task.status);
+  }else{assistantStatus.textContent='视觉模型已返回；以下为模型观察，不代表已核实事实。';}
+ }catch(error){assistantStatus.textContent=controller.signal.aborted?(stoppedByDeadline?'等待超过180秒，已停止查询；后端任务可能仍在处理。':'已停止本页等待；已提交的后端任务可能仍在处理。'):error.message;}
+ finally{clearTimeout(deadline);assistantController=null;assistantStart.disabled=false;assistantStop.disabled=true;}
+});
 const result=document.getElementById('result'),mode=document.getElementById('mode');
 const cameraImage=document.getElementById('camera-image'),cameraStatus=document.getElementById('camera-status'),cameraMeta=document.getElementById('camera-meta');
 let frameTag='',lastReceived=0,viewRevision=0,configRevision=0,currentConfig=null,modeUpdatePending=false;
