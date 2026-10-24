@@ -1,0 +1,22 @@
+# BuildKit picks this file up instead of .dockerignore whenever the build uses
+# Dockerfile.cloud. If your builder ignores it, the only effect is a slower
+# upload; the image still works.
+.git
+.venv
+.python311
+venv
+__pycache__
+*.pyc
+local_vision_data
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+.env
+.env.*
+!.env.example
+.pytest_cache
+smoke-results
+tests
+requirements-contract-tests.txt
+models
+model_bundle.part*

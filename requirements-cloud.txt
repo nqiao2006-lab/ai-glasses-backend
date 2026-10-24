@@ -1,0 +1,18 @@
+# Dependencies for the Tencent Cloud OCR engine. No Paddle, no model weights.
+#
+# Used by Dockerfile.cloud. The original requirements.txt (paddle stack) and
+# requirements-api.txt (which pulls it in) are NOT needed any more, because the
+# recognition runs in the cloud.
+#
+# opencv is still required: ocr_geometry.py and vision_service/quality.py import
+# cv2 at module top level, and the API imports them unconditionally.
+# opencv-python-headless 4.12.x declares "numpy<2.3.0,>=2", so numpy is pinned
+# to 2.2.6. Do not bump numpy alone; bump the pair.
+fastapi==0.115.14
+uvicorn==0.34.3
+httpx==0.28.1
+psutil==7.2.2
+Pillow==12.3.0
+numpy==2.2.6
+opencv-python-headless==4.12.0.88
+tencentcloud-sdk-python-ocr==3.1.193

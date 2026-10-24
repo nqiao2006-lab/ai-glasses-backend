@@ -197,7 +197,69 @@ def extract_fields(pages):
     return fields
 
 
+PADDLE_ENGINE_LABEL = 'PaddleOCR'
+_ENGINE_KIND = None
+ENGINE_NAME = PADDLE_ENGINE_LABEL
+
+
+def _env_flag(name, default):
+    """Read a boolean OCR setting under either naming; see ``_read_engine_choice``."""
+    for key in (name, 'VISION_' + name):
+        value = os.environ.get(key)
+        if value is not None:
+            return value.strip().lower() not in ('0', 'false', 'no')
+    return default
+
+
+def _read_engine_choice():
+    """Engine switch.
+
+    ``auto`` (default) picks the Tencent Cloud engine only when both secret
+    values are present, so an existing local install keeps working unchanged.
+
+    Names are read as ``OCR_*`` first because the local launcher strips every
+    ``VISION_*`` variable before starting this service; the long form still
+    works when the service is started by something else.
+    """
+    choice = ''
+    for name in ('OCR_ENGINE', 'VISION_OCR_ENGINE'):
+        value = os.environ.get(name, '').strip().lower()
+        if value:
+            choice = value
+            break
+    if not choice or choice == 'auto':
+        if (os.environ.get('TENCENTCLOUD_SECRET_ID', '').strip()
+                and os.environ.get('TENCENTCLOUD_SECRET_KEY', '').strip()):
+            return 'tencent'
+        return 'paddle'
+    if choice not in {'tencent', 'paddle'}:
+        raise RuntimeError(f'未知的 OCR_ENGINE：{choice}（可选 auto / tencent / paddle）')
+    return choice
+
+
+def selected_engine():
+    global _ENGINE_KIND
+    if _ENGINE_KIND is None:
+        _ENGINE_KIND = _read_engine_choice()
+    return _ENGINE_KIND
+
+
+def engine_name():
+    """Label reported by /health and by each result, for traceability."""
+    return ENGINE_NAME
+
+
 def create_engine():
+    global _ENGINE_KIND, ENGINE_NAME
+    _ENGINE_KIND = _read_engine_choice()
+    if _ENGINE_KIND == 'tencent':
+        import ocr_cloud_tencent
+        engine = ocr_cloud_tencent.create_engine()
+        ENGINE_NAME = ocr_cloud_tencent.ENGINE_LABEL
+        if _env_flag('OCR_STARTUP_PROBE', True):
+            ocr_cloud_tencent.probe(engine)
+        return engine
+    ENGINE_NAME = PADDLE_ENGINE_LABEL
     from ocr_runtime import configure_runtime
     configure_runtime()
     try:
@@ -214,7 +276,14 @@ def create_engine():
 
 
 def recognize(engine, image, source):
-    """Adapt one PaddleOCR image result without changing recognized text."""
+    """Adapt one OCR image result without changing recognized text."""
+    if selected_engine() == 'tencent':
+        import ocr_cloud_tencent
+        return ocr_cloud_tencent.recognize(engine, image, source)
+    return _recognize_paddle(engine, image, source)
+
+
+def _recognize_paddle(engine, image, source):
     outputs = list(engine.predict(input=image))
     if len(outputs) != 1:
         raise RuntimeError('单张图片未返回唯一 OCR 结果。')
